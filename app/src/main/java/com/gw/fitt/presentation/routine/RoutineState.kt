@@ -10,5 +10,6 @@ data class RoutineState(
     val homeExercises: List<Exercise> = emptyList(),
     val showCreateDialog: Boolean = false,
     val selectedRoutine: RoutineWithExercises? = null,
+    val routinePendingDelete: Routine? = null,
     val error: String? = null
 )

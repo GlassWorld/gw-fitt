@@ -52,6 +52,13 @@ class RoutineViewModel @Inject constructor(
 
     fun showCreateDialog() = _state.update { it.copy(showCreateDialog = true) }
     fun hideCreateDialog() = _state.update { it.copy(showCreateDialog = false) }
+    fun requestDeleteRoutine(routineId: Int) {
+        val routine = _state.value.routines.firstOrNull { it.id == routineId } ?: return
+        _state.update { it.copy(routinePendingDelete = routine) }
+    }
+
+    fun cancelDeleteRoutine() = _state.update { it.copy(routinePendingDelete = null) }
+
     fun hideRoutineDetail() {
         selectedRoutineJob?.cancel()
         selectedRoutineJob = null
@@ -79,9 +86,17 @@ class RoutineViewModel @Inject constructor(
         }
     }
 
-    fun deleteRoutine(routineId: Int) {
+    fun updateRoutineExercises(routineId: Int, exercises: List<RoutineExerciseInput>) {
+        viewModelScope.launch {
+            saveRoutineExercisesUseCase(routineId, exercises)
+        }
+    }
+
+    fun confirmDeleteRoutine() {
+        val routineId = _state.value.routinePendingDelete?.id ?: return
         viewModelScope.launch {
             deleteRoutineUseCase(routineId)
+            _state.update { it.copy(routinePendingDelete = null) }
         }
     }
 }

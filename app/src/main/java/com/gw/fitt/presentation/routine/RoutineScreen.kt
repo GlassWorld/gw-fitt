@@ -1,16 +1,16 @@
 package com.gw.fitt.presentation.routine
 
+import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -19,8 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -38,6 +37,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -46,12 +46,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gw.fitt.domain.model.Exercise
 import com.gw.fitt.domain.model.Routine
+import com.gw.fitt.domain.model.RoutineExercise
 import com.gw.fitt.domain.model.RoutineExerciseInput
 import com.gw.fitt.domain.model.RoutineWithExercises
 import com.gw.fitt.ui.component.FittCard
@@ -87,15 +90,13 @@ fun RoutineScreen(
                     modifier = Modifier.align(Alignment.Center),
                     color = MaterialTheme.fittColors.accent
                 )
-
                 state.routines.isEmpty() -> EmptyRoutineMessage(
                     modifier = Modifier.align(Alignment.Center)
                 )
-
                 else -> RoutineList(
                     routines = state.routines,
                     onSelect = viewModel::showRoutineDetail,
-                    onDelete = viewModel::deleteRoutine
+                    onDelete = viewModel::requestDeleteRoutine
                 )
             }
         }
@@ -113,7 +114,16 @@ fun RoutineScreen(
         RoutineDetailDialog(
             detail = detail,
             onStart = { onStartRoutine(detail) },
+            onSave = viewModel::updateRoutineExercises,
             onDismiss = viewModel::hideRoutineDetail
+        )
+    }
+
+    state.routinePendingDelete?.let { routine ->
+        DeleteRoutineDialog(
+            routine = routine,
+            onConfirm = viewModel::confirmDeleteRoutine,
+            onDismiss = viewModel::cancelDeleteRoutine
         )
     }
 }
@@ -225,15 +235,7 @@ private fun CreateRoutineDialog(
     }
 
     val exercisesById = exercises.associateBy { it.id }
-    val selectedInputs = selectedOrder.mapNotNull { exerciseId ->
-        exercisesById[exerciseId]?.let { exercise ->
-            RoutineExerciseInput(
-                exerciseId = exercise.id,
-                sets = sets[exercise.id] ?: exercise.defaultSets,
-                reps = reps[exercise.id] ?: exercise.defaultReps
-            )
-        }
-    }
+    val selectedInputs = selectedOrder.toCreateInputs(exercisesById, sets, reps)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -252,7 +254,6 @@ private fun CreateRoutineDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 OutlinedTextField(
                     value = minutesText,
                     onValueChange = { text ->
@@ -264,30 +265,21 @@ private fun CreateRoutineDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
                 )
-
                 Text(
                     text = "운동 구성",
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
-
                 exercises.forEach { exercise ->
                     ExercisePickerRow(
                         exercise = exercise,
                         selected = exercise.id in selectedOrder,
                         sets = sets[exercise.id] ?: exercise.defaultSets,
                         reps = reps[exercise.id] ?: exercise.defaultReps,
-                        canMoveUp = selectedOrder.indexOf(exercise.id) > 0,
-                        canMoveDown = selectedOrder.indexOf(exercise.id) in 0 until selectedOrder.lastIndex,
                         onSelectedChange = { checked ->
-                            if (checked && exercise.id !in selectedOrder) {
-                                selectedOrder.add(exercise.id)
-                            } else if (!checked) {
-                                selectedOrder.remove(exercise.id)
-                            }
+                            if (checked && exercise.id !in selectedOrder) selectedOrder.add(exercise.id)
+                            if (!checked) selectedOrder.remove(exercise.id)
                         },
-                        onMoveUp = { selectedOrder.move(exercise.id, -1) },
-                        onMoveDown = { selectedOrder.move(exercise.id, 1) },
                         onSetsChange = { value -> sets[exercise.id] = value },
                         onRepsChange = { value -> reps[exercise.id] = value }
                     )
@@ -312,11 +304,7 @@ private fun ExercisePickerRow(
     selected: Boolean,
     sets: Int,
     reps: Int,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
     onSelectedChange: (Boolean) -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     onSetsChange: (Int) -> Unit,
     onRepsChange: (Int) -> Unit
 ) {
@@ -343,33 +331,14 @@ private fun ExercisePickerRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
             if (selected) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Stepper(
-                        label = "세트",
-                        value = sets,
-                        min = 1,
-                        onChange = onSetsChange,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Stepper(
-                        label = "횟수",
-                        value = reps,
-                        min = 1,
-                        onChange = onRepsChange,
-                        modifier = Modifier.weight(1f)
-                    )
-                    IconButton(onClick = onMoveUp, enabled = canMoveUp) {
-                        Icon(Icons.Filled.KeyboardArrowUp, contentDescription = "순서 올리기")
-                    }
-                    IconButton(onClick = onMoveDown, enabled = canMoveDown) {
-                        Icon(Icons.Filled.KeyboardArrowDown, contentDescription = "순서 내리기")
-                    }
+                    Stepper("세트", sets, 1, onSetsChange, Modifier.weight(1f))
+                    Stepper("횟수", reps, 1, onRepsChange, Modifier.weight(1f))
                 }
             }
         }
@@ -405,44 +374,211 @@ private fun Stepper(
 private fun RoutineDetailDialog(
     detail: RoutineWithExercises,
     onStart: () -> Unit,
+    onSave: (Int, List<RoutineExerciseInput>) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+    val exercisesById = detail.exercises.associateBy { it.exerciseId }
+    val selectedOrder = remember(detail.routine.id) {
+        mutableStateListOf<Int>().apply {
+            addAll(detail.exercises.sortedBy { it.orderIndex }.map { it.exerciseId })
+        }
+    }
+    val sets = remember(detail.routine.id) { mutableStateMapOf<Int, Int>() }
+    val reps = remember(detail.routine.id) { mutableStateMapOf<Int, Int>() }
+
+    LaunchedEffect(detail) {
+        detail.exercises.forEach { exercise ->
+            sets[exercise.exerciseId] = exercise.customSets
+            reps[exercise.exerciseId] = exercise.customReps
+        }
+    }
+
+    val orderedExercises = selectedOrder.mapNotNull { exercisesById[it] }
+    val selectedInputs = selectedOrder.toEditInputs(exercisesById, sets, reps)
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(detail.routine.name) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 560.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 Text(
                     text = "${detail.routine.estimatedMinutes}분",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (detail.exercises.isEmpty()) {
-                    Text("아직 운동이 들어있지 않아요.")
-                } else {
-                    detail.exercises.forEachIndexed { index, exercise ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("${index + 1}. ${exercise.exerciseName}")
-                            Spacer(Modifier.width(12.dp))
-                            Text("${exercise.customSets}세트 x ${exercise.customReps}회")
-                        }
-                    }
+                Button(
+                    onClick = onStart,
+                    enabled = selectedInputs.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("운동 시작") }
+                Text(
+                    text = "세트, 횟수, 순서 편집",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+                orderedExercises.forEach { exercise ->
+                    RoutineExerciseEditRow(
+                        exercise = exercise,
+                        sets = sets[exercise.exerciseId] ?: exercise.customSets,
+                        reps = reps[exercise.exerciseId] ?: exercise.customReps,
+                        onMoveUp = { selectedOrder.move(exercise.exerciseId, -1) },
+                        onMoveDown = { selectedOrder.move(exercise.exerciseId, 1) },
+                        onSetsChange = { value -> sets[exercise.exerciseId] = value },
+                        onRepsChange = { value -> reps[exercise.exerciseId] = value }
+                    )
                 }
             }
         },
         confirmButton = {
-            Button(
-                onClick = onStart,
-                enabled = detail.exercises.isNotEmpty()
-            ) { Text("운동 시작") }
+            TextButton(
+                onClick = {
+                    onSave(detail.routine.id, selectedInputs)
+                    Toast.makeText(context, "변경사항을 저장했어요.", Toast.LENGTH_SHORT).show()
+                },
+                enabled = selectedInputs.isNotEmpty()
+            ) { Text("변경 저장") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("닫기") }
         }
     )
+}
+
+@Composable
+private fun DeleteRoutineDialog(
+    routine: Routine,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("루틴 삭제") },
+        text = {
+            Text(
+                text = "'${routine.name}' 루틴을 삭제할까요? 삭제한 루틴은 되돌릴 수 없습니다.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("삭제", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("취소") }
+        }
+    )
+}
+
+@Composable
+private fun RoutineExerciseEditRow(
+    exercise: RoutineExercise,
+    sets: Int,
+    reps: Int,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onSetsChange: (Int) -> Unit,
+    onRepsChange: (Int) -> Unit
+) {
+    var dragOffset by remember(exercise.exerciseId) { mutableFloatStateOf(0f) }
+    val dragThresholdPx = 72f
+
+    FittCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .pointerInput(exercise.exerciseId) {
+                            detectVerticalDragGestures(
+                                onDragStart = { dragOffset = 0f },
+                                onVerticalDrag = { _, dragAmount ->
+                                    dragOffset += dragAmount
+                                    when {
+                                        dragOffset <= -dragThresholdPx -> {
+                                            onMoveUp()
+                                            dragOffset = 0f
+                                        }
+                                        dragOffset >= dragThresholdPx -> {
+                                            onMoveDown()
+                                            dragOffset = 0f
+                                        }
+                                    }
+                                },
+                                onDragEnd = { dragOffset = 0f },
+                                onDragCancel = { dragOffset = 0f }
+                            )
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.DragHandle,
+                        contentDescription = "드래그로 순서 변경",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = exercise.exerciseName,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+                Text(
+                    text = if (exercise.durationSec > 0) "${exercise.durationSec}초 기준" else "반복 운동",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Stepper("세트", sets, 1, onSetsChange, Modifier.weight(1f))
+                Stepper("횟수", reps, 1, onRepsChange, Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+private fun List<Int>.toCreateInputs(
+    exercisesById: Map<Int, Exercise>,
+    sets: Map<Int, Int>,
+    reps: Map<Int, Int>
+): List<RoutineExerciseInput> = mapNotNull { exerciseId ->
+    exercisesById[exerciseId]?.let { exercise ->
+        RoutineExerciseInput(
+            exerciseId = exercise.id,
+            sets = sets[exercise.id] ?: exercise.defaultSets,
+            reps = reps[exercise.id] ?: exercise.defaultReps
+        )
+    }
+}
+
+private fun List<Int>.toEditInputs(
+    exercisesById: Map<Int, RoutineExercise>,
+    sets: Map<Int, Int>,
+    reps: Map<Int, Int>
+): List<RoutineExerciseInput> = mapNotNull { exerciseId ->
+    exercisesById[exerciseId]?.let { exercise ->
+        RoutineExerciseInput(
+            exerciseId = exercise.exerciseId,
+            sets = sets[exercise.exerciseId] ?: exercise.customSets,
+            reps = reps[exercise.exerciseId] ?: exercise.customReps
+        )
+    }
 }
 
 private fun MutableList<Int>.move(item: Int, offset: Int) {
