@@ -6,5 +6,6 @@ data class Exercise(
     val category: String,
     val defaultSets: Int,
     val defaultReps: Int,
-    val durationSec: Int
+    val durationSec: Int,
+    val met: Double = 4.0
 )

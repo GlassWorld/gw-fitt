@@ -9,5 +9,6 @@ data class RoutineExerciseWithDetail(
     val customReps: Int,
     val exerciseName: String,
     val category: String,
-    val durationSec: Int
+    val durationSec: Int,
+    val met: Double
 )

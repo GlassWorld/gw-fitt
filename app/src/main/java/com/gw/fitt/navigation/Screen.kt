@@ -1,9 +1,16 @@
 package com.gw.fitt.navigation
 
+import android.net.Uri
+
 sealed class Screen(val route: String) {
     object Home : Screen("home")
     object Routine : Screen("routine")
-    object Timer : Screen("timer")
+    object Timer : Screen("timer") {
+        const val routineRoute = "timer/{routineId}/{routineName}/{totalSets}"
+
+        fun createRoute(routineId: Int, routineName: String, totalSets: Int): String =
+            "timer/$routineId/${Uri.encode(routineName)}/$totalSets"
+    }
     object Log : Screen("log")
     object Coach : Screen("coach")
 }

@@ -11,5 +11,6 @@ data class ExerciseEntity(
     val category: String,       // 상체 / 하체 / 코어 / 전신 / 유산소
     val defaultSets: Int,
     val defaultReps: Int,
-    val durationSec: Int
+    val durationSec: Int,
+    val met: Double = 4.0
 )

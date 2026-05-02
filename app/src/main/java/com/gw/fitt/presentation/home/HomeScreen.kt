@@ -7,22 +7,28 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.gw.fitt.domain.model.Routine
 import com.gw.fitt.domain.model.WeeklyStats
-import com.gw.fitt.ui.component.Difficulty
-import com.gw.fitt.ui.component.FittBadge
 import com.gw.fitt.ui.component.FittCard
 import com.gw.fitt.ui.theme.fittColors
 import java.text.SimpleDateFormat
@@ -52,6 +58,7 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
         HomeHeader()
+        WeightCard(weightKg = state.weightKg, onSave = viewModel::saveWeight)
         WeeklyStatsSection(stats = state.weeklyStats)
         if (state.recentRoutines.isNotEmpty()) {
             RecentRoutinesSection(routines = state.recentRoutines)
@@ -66,7 +73,7 @@ private fun HomeHeader() {
     val today = SimpleDateFormat("M월 d일 (E)", Locale.KOREAN).format(Date())
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
-            text = "안녕하세요!",
+            text = "오늘도 움직여볼까요?",
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -79,6 +86,58 @@ private fun HomeHeader() {
 }
 
 @Composable
+private fun WeightCard(
+    weightKg: Double?,
+    onSave: (Double) -> Unit
+) {
+    var text by remember { mutableStateOf("") }
+    LaunchedEffect(weightKg) {
+        text = weightKg?.let { "%.1f".format(it) } ?: ""
+    }
+    val parsed = text.toDoubleOrNull()
+
+    FittCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = "내 체중",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = text,
+                    onValueChange = { text = it },
+                    label = { Text("kg") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    onClick = { parsed?.let(onSave) },
+                    enabled = parsed != null && parsed > 0.0
+                ) {
+                    Text("저장")
+                }
+            }
+            Text(
+                text = "운동 완료 시 칼로리 계산 기본값으로 사용됩니다.",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
 private fun WeeklyStatsSection(stats: WeeklyStats) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(text = "이번 주 운동", style = MaterialTheme.typography.headlineMedium)
@@ -86,9 +145,9 @@ private fun WeeklyStatsSection(stats: WeeklyStats) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            StatCard(label = "운동 횟수",   value = "${stats.workoutCount}회",      modifier = Modifier.weight(1f))
-            StatCard(label = "운동 시간",   value = "${stats.totalMinutes}분",       modifier = Modifier.weight(1f))
-            StatCard(label = "소모 칼로리", value = "${stats.totalCalories}kcal",   modifier = Modifier.weight(1f))
+            StatCard(label = "운동 횟수", value = "${stats.workoutCount}회", modifier = Modifier.weight(1f))
+            StatCard(label = "운동 시간", value = "${stats.totalMinutes}분", modifier = Modifier.weight(1f))
+            StatCard(label = "소모 칼로리", value = "${stats.totalCalories}kcal", modifier = Modifier.weight(1f))
         }
     }
 }
@@ -126,7 +185,6 @@ private fun RecentRoutinesSection(routines: List<Routine>) {
 
 @Composable
 private fun RoutineRow(routine: Routine) {
-    val difficulty = routine.level.toDifficulty()
     FittCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -142,12 +200,16 @@ private fun RoutineRow(routine: Routine) {
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "⏱ ${routine.estimatedMinutes}분",
+                    text = "${routine.estimatedMinutes}분",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            FittBadge(difficulty = difficulty)
+            Text(
+                text = "맨몸 루틴",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -164,16 +226,10 @@ private fun EmptyRoutineHint() {
         ) {
             Text(text = "아직 루틴이 없어요", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             Text(
-                text = "루틴 탭에서 첫 번째 루틴을 만들어 보세요!",
+                text = "루틴 탭에서 첫 번째 맨몸운동 루틴을 만들어보세요.",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
-}
-
-private fun String.toDifficulty() = when (this) {
-    "중급" -> Difficulty.INTERMEDIATE
-    "고급" -> Difficulty.ADVANCED
-    else  -> Difficulty.BEGINNER
 }

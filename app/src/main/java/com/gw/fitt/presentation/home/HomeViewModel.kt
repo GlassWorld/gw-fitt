@@ -2,6 +2,7 @@ package com.gw.fitt.presentation.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gw.fitt.data.local.WorkoutSessionStore
 import com.gw.fitt.domain.usecase.log.GetWeeklyStatsUseCase
 import com.gw.fitt.domain.usecase.routine.GetRoutinesUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getWeeklyStatsUseCase: GetWeeklyStatsUseCase,
-    private val getRoutinesUseCase: GetRoutinesUseCase
+    private val getRoutinesUseCase: GetRoutinesUseCase,
+    private val workoutSessionStore: WorkoutSessionStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(HomeState())
@@ -35,11 +37,17 @@ class HomeViewModel @Inject constructor(
                 HomeState(
                     isLoading = false,
                     weeklyStats = stats,
-                    recentRoutines = routines.take(3)
+                    recentRoutines = routines.take(3),
+                    weightKg = workoutSessionStore.getLastWeightKg()
                 )
             }.collect { newState ->
                 _state.value = newState
             }
         }
+    }
+
+    fun saveWeight(weightKg: Double) {
+        workoutSessionStore.saveLastWeightKg(weightKg)
+        _state.update { it.copy(weightKg = weightKg) }
     }
 }
