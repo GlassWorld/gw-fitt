@@ -97,6 +97,14 @@ PowerShell에서 프로젝트 루트로 이동한 뒤 실행합니다.
 BUILD SUCCESSFUL
 ```
 
+Debug APK는 프로젝트 내부의 아래 경로에 생성됩니다.
+
+```text
+app\build\outputs\apk\debug\app-debug.apk
+```
+
+APK 생성과 설치 방법은 [APK_BUILD.md](APK_BUILD.md)를 참고합니다.
+
 ## 7. 에뮬레이터로 실행
 
 1. Android Studio에서 `Device Manager`를 엽니다.
