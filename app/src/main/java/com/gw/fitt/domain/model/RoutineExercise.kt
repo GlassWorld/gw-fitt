@@ -8,5 +8,6 @@ data class RoutineExercise(
     val orderIndex: Int,
     val customSets: Int,
     val customReps: Int,
-    val durationSec: Int
+    val durationSec: Int,
+    val met: Double = 4.0
 )

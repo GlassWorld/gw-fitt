@@ -24,6 +24,9 @@ class ExerciseRepositoryImpl @Inject constructor(
     override suspend fun insert(exercise: Exercise): Long =
         exerciseDao.insert(exercise.toEntity())
 
+    override suspend fun insertAll(exercises: List<Exercise>) =
+        exerciseDao.insertAll(exercises.map { it.toEntity() })
+
     override suspend fun delete(exercise: Exercise) =
         exerciseDao.delete(exercise.toEntity())
 }
@@ -34,7 +37,8 @@ private fun ExerciseEntity.toDomain() = Exercise(
     category = category,
     defaultSets = defaultSets,
     defaultReps = defaultReps,
-    durationSec = durationSec
+    durationSec = durationSec,
+    met = met
 )
 
 private fun Exercise.toEntity() = ExerciseEntity(
@@ -43,5 +47,6 @@ private fun Exercise.toEntity() = ExerciseEntity(
     category = category,
     defaultSets = defaultSets,
     defaultReps = defaultReps,
-    durationSec = durationSec
+    durationSec = durationSec,
+    met = met
 )

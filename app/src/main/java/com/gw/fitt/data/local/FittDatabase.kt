@@ -3,6 +3,7 @@ package com.gw.fitt.data.local
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.RoomDatabase.Callback
+import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.gw.fitt.data.local.dao.ExerciseDao
 import com.gw.fitt.data.local.dao.RoutineDao
@@ -23,7 +24,7 @@ import kotlinx.coroutines.launch
         RoutineExerciseEntity::class,
         WorkoutLogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class FittDatabase : RoomDatabase() {
@@ -46,12 +47,18 @@ abstract class FittDatabase : RoomDatabase() {
 
         private fun buildInsertSql(exercises: List<ExerciseEntity>): String {
             val rows = exercises.joinToString(",\n") { e ->
-                "('${e.name}', '${e.category}', ${e.defaultSets}, ${e.defaultReps}, ${e.durationSec})"
+                "('${e.name}', '${e.category}', ${e.defaultSets}, ${e.defaultReps}, ${e.durationSec}, ${e.met})"
             }
             return """
-                INSERT OR IGNORE INTO exercises (name, category, defaultSets, defaultReps, durationSec)
+                INSERT OR IGNORE INTO exercises (name, category, defaultSets, defaultReps, durationSec, met)
                 VALUES $rows
             """.trimIndent()
+        }
+
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercises ADD COLUMN met REAL NOT NULL DEFAULT 4.0")
+            }
         }
 
         private val defaultExercises = listOf(

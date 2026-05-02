@@ -3,9 +3,11 @@ package com.gw.fitt.navigation
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import androidx.navigation.navArgument
 import com.gw.fitt.presentation.coach.CoachScreen
 import com.gw.fitt.presentation.home.HomeScreen
 import com.gw.fitt.presentation.log.LogScreen
@@ -37,7 +39,18 @@ fun FittNavGraph(
             route = Graph.ROUTINE
         ) {
             composable(Screen.Routine.route) {
-                RoutineScreen()
+                RoutineScreen(
+                    onStartRoutine = { detail ->
+                        val totalSets = detail.exercises.sumOf { it.customSets }.coerceAtLeast(1)
+                        navController.navigate(
+                            Screen.Timer.createRoute(
+                                routineId = detail.routine.id,
+                                routineName = detail.routine.name,
+                                totalSets = totalSets
+                            )
+                        )
+                    }
+                )
             }
         }
 
@@ -47,6 +60,20 @@ fun FittNavGraph(
         ) {
             composable(Screen.Timer.route) {
                 TimerScreen()
+            }
+            composable(
+                route = Screen.Timer.routineRoute,
+                arguments = listOf(
+                    navArgument("routineId") { type = NavType.IntType },
+                    navArgument("routineName") { type = NavType.StringType },
+                    navArgument("totalSets") { type = NavType.IntType }
+                )
+            ) { entry ->
+                TimerScreen(
+                    routineId = entry.arguments?.getInt("routineId") ?: 0,
+                    routineName = entry.arguments?.getString("routineName").orEmpty(),
+                    totalSets = entry.arguments?.getInt("totalSets") ?: 3
+                )
             }
         }
 

@@ -4,8 +4,10 @@ import com.gw.fitt.data.local.RoutineExerciseWithDetail
 import com.gw.fitt.data.local.dao.RoutineDao
 import com.gw.fitt.data.local.dao.RoutineExerciseDao
 import com.gw.fitt.data.local.entity.RoutineEntity
+import com.gw.fitt.data.local.entity.RoutineExerciseEntity
 import com.gw.fitt.domain.model.Routine
 import com.gw.fitt.domain.model.RoutineExercise
+import com.gw.fitt.domain.model.RoutineExerciseInput
 import com.gw.fitt.domain.model.RoutineWithExercises
 import com.gw.fitt.domain.repository.RoutineRepository
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +47,20 @@ class RoutineRepositoryImpl @Inject constructor(
             )
         )
 
+    override suspend fun replaceExercises(routineId: Int, exercises: List<RoutineExerciseInput>) =
+        routineExerciseDao.replaceAll(
+            routineId = routineId,
+            routineExercises = exercises.mapIndexed { index, exercise ->
+                RoutineExerciseEntity(
+                    routineId = routineId,
+                    exerciseId = exercise.exerciseId,
+                    orderIndex = index,
+                    customSets = exercise.sets,
+                    customReps = exercise.reps
+                )
+            }
+        )
+
     override suspend fun update(routine: Routine) =
         routineDao.update(routine.toEntity())
 
@@ -76,5 +92,6 @@ private fun RoutineExerciseWithDetail.toDomain() = RoutineExercise(
     orderIndex = orderIndex,
     customSets = customSets,
     customReps = customReps,
-    durationSec = durationSec
+    durationSec = durationSec,
+    met = met
 )

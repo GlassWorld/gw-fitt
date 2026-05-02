@@ -28,6 +28,7 @@ object DatabaseModule {
         "fitt.db"
     )
         .addCallback(FittDatabase.prepopulateCallback)
+        .addMigrations(FittDatabase.MIGRATION_1_2)
         .build()
 
     @Provides

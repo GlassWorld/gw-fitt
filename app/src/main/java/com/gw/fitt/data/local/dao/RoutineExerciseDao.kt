@@ -36,7 +36,7 @@ interface RoutineExerciseDao {
 
     @Query("""
         SELECT re.routineId, re.exerciseId, re.orderIndex, re.customSets, re.customReps,
-               e.name AS exerciseName, e.category, e.durationSec
+               e.name AS exerciseName, e.category, e.durationSec, e.met
         FROM routine_exercises re
         INNER JOIN exercises e ON re.exerciseId = e.id
         WHERE re.routineId = :routineId

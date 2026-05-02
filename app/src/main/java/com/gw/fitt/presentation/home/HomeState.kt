@@ -7,5 +7,6 @@ data class HomeState(
     val isLoading: Boolean = true,
     val weeklyStats: WeeklyStats = WeeklyStats(),
     val recentRoutines: List<Routine> = emptyList(),
+    val weightKg: Double? = null,
     val error: String? = null
 )
