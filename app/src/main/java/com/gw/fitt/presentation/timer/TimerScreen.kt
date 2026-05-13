@@ -56,10 +56,17 @@ fun TimerScreen(
     routineId: Int? = null,
     routineName: String? = null,
     totalSets: Int = 3,
+    selectedExercises: List<RoutineExercise> = emptyList(),
+    onBackToSelection: (() -> Unit)? = null,
     viewModel: TimerViewModel = hiltViewModel()
 ) {
     LaunchedEffect(routineId, routineName, totalSets) {
         viewModel.configureRoutine(routineId, routineName, totalSets)
+    }
+    LaunchedEffect(selectedExercises) {
+        if (selectedExercises.isNotEmpty()) {
+            viewModel.startSelectedWorkout(selectedExercises)
+        }
     }
 
     val state by viewModel.state.collectAsState()
@@ -72,7 +79,26 @@ fun TimerScreen(
         )
     }
 
-    Scaffold(topBar = { FittTopBar(title = state.routineName ?: "타이머") }) { innerPadding ->
+    val canReturnToSelection = state.routineId == null &&
+        state.routineName == "선택 운동" &&
+        state.routineExercises.isNotEmpty() &&
+        onBackToSelection != null
+
+    Scaffold(
+        topBar = {
+            FittTopBar(
+                title = state.routineName ?: "타이머",
+                onNavigateBack = if (canReturnToSelection) {
+                    {
+                        viewModel.abandonWorkout()
+                        onBackToSelection?.invoke()
+                    }
+                } else {
+                    null
+                }
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -300,7 +326,11 @@ private fun ControlButtons(
 private fun FinishedSection(state: TimerState, onReset: () -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
-            text = if (state.isLogSaved) "기록에 저장됐어요." else "기록 저장 중...",
+            text = when {
+                state.routineId == null -> "운동이 완료됐어요."
+                state.isLogSaved -> "기록에 저장됐어요."
+                else -> "기록 저장 중..."
+            },
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

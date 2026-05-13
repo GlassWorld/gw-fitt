@@ -27,8 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.gw.fitt.domain.model.Routine
 import com.gw.fitt.domain.model.WeeklyStats
+import com.gw.fitt.domain.model.WorkoutLog
 import com.gw.fitt.ui.component.FittCard
 import com.gw.fitt.ui.theme.fittColors
 import java.text.SimpleDateFormat
@@ -60,10 +60,10 @@ fun HomeScreen(viewModel: HomeViewModel = hiltViewModel()) {
         HomeHeader()
         WeightCard(weightKg = state.weightKg, onSave = viewModel::saveWeight)
         WeeklyStatsSection(stats = state.weeklyStats)
-        if (state.recentRoutines.isNotEmpty()) {
-            RecentRoutinesSection(routines = state.recentRoutines)
+        if (state.recentWorkoutLogs.isNotEmpty()) {
+            RecentWorkoutSection(logs = state.recentWorkoutLogs)
         } else {
-            EmptyRoutineHint()
+            EmptyWorkoutHint()
         }
     }
 }
@@ -176,15 +176,19 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
 }
 
 @Composable
-private fun RecentRoutinesSection(routines: List<Routine>) {
+private fun RecentWorkoutSection(logs: List<WorkoutLog>) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(text = "최근 루틴", style = MaterialTheme.typography.headlineMedium)
-        routines.forEach { RoutineRow(routine = it) }
+        Text(text = "최근 운동", style = MaterialTheme.typography.headlineMedium)
+        logs.forEach { WorkoutLogRow(log = it) }
     }
 }
 
 @Composable
-private fun RoutineRow(routine: Routine) {
+private fun WorkoutLogRow(log: WorkoutLog) {
+    val dateStr = remember(log.startedAt) {
+        SimpleDateFormat("M월 d일 HH:mm", Locale.KOREAN).format(Date(log.startedAt))
+    }
+
     FittCard(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -195,27 +199,34 @@ private fun RoutineRow(routine: Routine) {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = routine.name,
+                    text = log.routineName,
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "${routine.estimatedMinutes}분",
+                    text = dateStr,
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Text(
-                text = "맨몸 루틴",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "${log.durationMinutes}분",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${log.totalCalories} kcal",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun EmptyRoutineHint() {
+private fun EmptyWorkoutHint() {
     FittCard(modifier = Modifier.fillMaxWidth()) {
         Column(
             modifier = Modifier
@@ -224,9 +235,9 @@ private fun EmptyRoutineHint() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(text = "아직 루틴이 없어요", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+            Text(text = "아직 운동 기록이 없어요", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
             Text(
-                text = "루틴 탭에서 첫 번째 맨몸운동 루틴을 만들어보세요.",
+                text = "선택운동이나 타이머로 첫 운동을 완료해보세요.",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

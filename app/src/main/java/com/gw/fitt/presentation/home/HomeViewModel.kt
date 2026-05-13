@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gw.fitt.data.local.WorkoutSessionStore
 import com.gw.fitt.domain.usecase.log.GetWeeklyStatsUseCase
-import com.gw.fitt.domain.usecase.routine.GetRoutinesUseCase
+import com.gw.fitt.domain.usecase.log.GetWorkoutLogsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,7 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val getWeeklyStatsUseCase: GetWeeklyStatsUseCase,
-    private val getRoutinesUseCase: GetRoutinesUseCase,
+    private val getWorkoutLogsUseCase: GetWorkoutLogsUseCase,
     private val workoutSessionStore: WorkoutSessionStore
 ) : ViewModel() {
 
@@ -32,12 +32,12 @@ class HomeViewModel @Inject constructor(
         viewModelScope.launch {
             combine(
                 getWeeklyStatsUseCase(),
-                getRoutinesUseCase()
-            ) { stats, routines ->
+                getWorkoutLogsUseCase()
+            ) { stats, logs ->
                 HomeState(
                     isLoading = false,
                     weeklyStats = stats,
-                    recentRoutines = routines.take(3),
+                    recentWorkoutLogs = logs.take(5),
                     weightKg = workoutSessionStore.getLastWeightKg()
                 )
             }.collect { newState ->

@@ -4,7 +4,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -29,10 +28,9 @@ data class BottomNavItem(
 
 private val bottomNavItems = listOf(
     BottomNavItem(label = "홈",     graphRoute = Graph.HOME,    icon = Icons.Filled.Home),
-    BottomNavItem(label = "루틴",   graphRoute = Graph.ROUTINE, icon = Icons.Filled.FitnessCenter),
+    BottomNavItem(label = "선택운동", graphRoute = Graph.ROUTINE, icon = Icons.Filled.FitnessCenter),
     BottomNavItem(label = "타이머", graphRoute = Graph.TIMER,   icon = Icons.Filled.Timer),
     BottomNavItem(label = "기록",   graphRoute = Graph.LOG,     icon = Icons.Filled.BarChart),
-    BottomNavItem(label = "AI코치", graphRoute = Graph.COACH,   icon = Icons.Filled.SmartToy),
 )
 
 @Composable

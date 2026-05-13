@@ -22,7 +22,15 @@ class SeedHomeExercisesUseCase @Inject constructor(
             Exercise(id = 105, name = "플랭크", category = HOME_CATEGORY, defaultSets = 3, defaultReps = 1, durationSec = 45, met = 3.3),
             Exercise(id = 106, name = "버피", category = HOME_CATEGORY, defaultSets = 3, defaultReps = 10, durationSec = 0, met = 8.0),
             Exercise(id = 107, name = "마운틴 클라이머", category = HOME_CATEGORY, defaultSets = 3, defaultReps = 20, durationSec = 0, met = 8.0),
-            Exercise(id = 108, name = "글루트 브릿지", category = HOME_CATEGORY, defaultSets = 3, defaultReps = 15, durationSec = 0, met = 3.5)
+            Exercise(id = 108, name = "글루트 브릿지", category = HOME_CATEGORY, defaultSets = 3, defaultReps = 15, durationSec = 0, met = 3.5),
+            Exercise(id = 109, name = "점핑잭", category = "유산소", defaultSets = 3, defaultReps = 30, durationSec = 0, met = 8.0),
+            Exercise(id = 110, name = "하이 니", category = "유산소", defaultSets = 3, defaultReps = 30, durationSec = 0, met = 8.0),
+            Exercise(id = 111, name = "사이드 플랭크", category = "코어", defaultSets = 3, defaultReps = 1, durationSec = 30, met = 3.0),
+            Exercise(id = 112, name = "레그 레이즈", category = "코어", defaultSets = 3, defaultReps = 15, durationSec = 0, met = 3.5),
+            Exercise(id = 113, name = "슈퍼맨", category = "등/후면", defaultSets = 3, defaultReps = 15, durationSec = 0, met = 3.0),
+            Exercise(id = 114, name = "리버스 런지", category = "하체", defaultSets = 3, defaultReps = 12, durationSec = 0, met = 4.5),
+            Exercise(id = 115, name = "카프 레이즈", category = "하체", defaultSets = 3, defaultReps = 20, durationSec = 0, met = 3.0),
+            Exercise(id = 116, name = "파이크 푸시업", category = "상체", defaultSets = 3, defaultReps = 10, durationSec = 0, met = 4.0)
         )
     }
 }

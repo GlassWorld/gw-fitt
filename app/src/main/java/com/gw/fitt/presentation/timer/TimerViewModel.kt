@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gw.fitt.data.local.SavedWorkoutSession
 import com.gw.fitt.data.local.WorkoutSessionStore
+import com.gw.fitt.domain.model.RoutineExercise
 import com.gw.fitt.domain.model.WorkoutLog
 import com.gw.fitt.domain.usecase.log.SaveWorkoutLogUseCase
 import com.gw.fitt.domain.usecase.routine.GetRoutineDetailUseCase
@@ -34,6 +35,7 @@ class TimerViewModel @Inject constructor(
 
     fun configureRoutine(routineId: Int?, routineName: String?, totalSets: Int) {
         val current = _state.value
+        if (routineId == null && routineName.isNullOrBlank() && current.routineId == null && current.routineExercises.isNotEmpty()) return
         if (current.routineId == routineId && current.routineName == routineName && current.totalSets == totalSets) return
         routineJob?.cancel()
         _state.value = TimerState(
@@ -59,6 +61,19 @@ class TimerViewModel @Inject constructor(
         }
     }
 
+    fun startSelectedWorkout(exercises: List<RoutineExercise>) {
+        if (exercises.isEmpty()) return
+        routineJob?.cancel()
+        timerJob?.cancel()
+        _state.value = TimerState(
+            routineName = "선택 운동",
+            routineExercises = exercises,
+            totalSets = exercises.sumOf { it.customSets }.coerceAtLeast(1),
+            restDurationSeconds = _state.value.restDurationSeconds,
+            lastWeightKg = workoutSessionStore.getLastWeightKg()
+        )
+    }
+
     fun toggleTimer() {
         if (_state.value.isRunning) pauseTimer() else startWorkoutTimer()
     }
@@ -67,7 +82,14 @@ class TimerViewModel @Inject constructor(
         val s = _state.value
         if (s.currentSet >= s.totalSets) {
             timerJob?.cancel()
-            _state.update { it.copy(isRunning = false, isFinished = true, isAwaitingWeight = it.routineId != null) }
+            _state.update {
+                it.copy(
+                    isRunning = false,
+                    isFinished = true,
+                    isAwaitingWeight = it.routineId != null,
+                    isLogSaved = false
+                )
+            }
             workoutSessionStore.clear()
             if (s.routineId == null) saveLogIfNeeded(weightKg = null)
             return
@@ -99,6 +121,13 @@ class TimerViewModel @Inject constructor(
         if (_state.value.routineId != null) {
             workoutSessionStore.clear()
         }
+        if (_state.value.routineId == null) {
+            _state.value = TimerState(
+                restDurationSeconds = _state.value.restDurationSeconds,
+                lastWeightKg = _state.value.lastWeightKg
+            )
+            return
+        }
         _state.value = TimerState(
             routineId = _state.value.routineId,
             routineName = _state.value.routineName,
@@ -116,7 +145,10 @@ class TimerViewModel @Inject constructor(
         _state.value = TimerState(
             routineId = _state.value.routineId,
             routineName = _state.value.routineName,
-            totalSets = _state.value.totalSets
+            routineExercises = _state.value.routineExercises,
+            totalSets = _state.value.totalSets,
+            restDurationSeconds = _state.value.restDurationSeconds,
+            lastWeightKg = _state.value.lastWeightKg
         )
     }
 
@@ -221,8 +253,8 @@ class TimerViewModel @Inject constructor(
 
     private fun saveLogIfNeeded(weightKg: Double?) {
         val s = _state.value
-        val routineId = s.routineId ?: return
-        val routineName = s.routineName ?: return
+        val routineId = s.routineId ?: 0
+        val routineName = s.routineName ?: "자유 타이머"
         if (s.isLogSaved) return
 
         viewModelScope.launch {

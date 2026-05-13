@@ -9,5 +9,5 @@ class GetHomeExercisesUseCase @Inject constructor(
     private val exerciseRepository: ExerciseRepository
 ) {
     operator fun invoke(): Flow<List<Exercise>> =
-        exerciseRepository.getByCategory(SeedHomeExercisesUseCase.HOME_CATEGORY)
+        exerciseRepository.getAll()
 }

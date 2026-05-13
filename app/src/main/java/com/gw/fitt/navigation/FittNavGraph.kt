@@ -8,7 +8,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
 import androidx.navigation.navArgument
-import com.gw.fitt.presentation.coach.CoachScreen
 import com.gw.fitt.presentation.home.HomeScreen
 import com.gw.fitt.presentation.log.LogScreen
 import com.gw.fitt.presentation.routine.RoutineScreen
@@ -40,15 +39,9 @@ fun FittNavGraph(
         ) {
             composable(Screen.Routine.route) {
                 RoutineScreen(
-                    onStartRoutine = { detail ->
-                        val totalSets = detail.exercises.sumOf { it.customSets }.coerceAtLeast(1)
-                        navController.navigate(
-                            Screen.Timer.createRoute(
-                                routineId = detail.routine.id,
-                                routineName = detail.routine.name,
-                                totalSets = totalSets
-                            )
-                        )
+                    onStartSelectedWorkout = { exercises ->
+                        SelectedWorkoutHolder.set(exercises)
+                        navController.navigate(Screen.Timer.selectedRoute)
                     }
                 )
             }
@@ -60,6 +53,19 @@ fun FittNavGraph(
         ) {
             composable(Screen.Timer.route) {
                 TimerScreen()
+            }
+            composable(Screen.Timer.selectedRoute) {
+                TimerScreen(
+                    selectedExercises = SelectedWorkoutHolder.consume(),
+                    onBackToSelection = {
+                        navController.navigate(Graph.ROUTINE) {
+                            popUpTo(Screen.Timer.selectedRoute) {
+                                inclusive = true
+                            }
+                            launchSingleTop = true
+                        }
+                    }
+                )
             }
             composable(
                 route = Screen.Timer.routineRoute,
@@ -86,13 +92,5 @@ fun FittNavGraph(
             }
         }
 
-        navigation(
-            startDestination = Screen.Coach.route,
-            route = Graph.COACH
-        ) {
-            composable(Screen.Coach.route) {
-                CoachScreen()
-            }
-        }
     }
 }
